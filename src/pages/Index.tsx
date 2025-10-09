@@ -1,14 +1,38 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from "react";
+import RoleSelector from "@/components/RoleSelector";
+import OwnerDashboard from "@/components/OwnerDashboard";
+import AdminDashboard from "@/components/AdminDashboard";
+import BankDashboard from "@/components/BankDashboard";
+import CustomerView from "@/components/CustomerView";
 
 const Index = () => {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
-  );
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+
+  const handleRoleSelect = (role: string) => {
+    setSelectedRole(role);
+  };
+
+  const handleBack = () => {
+    setSelectedRole(null);
+  };
+
+  if (selectedRole === "owner") {
+    return <OwnerDashboard onBack={handleBack} />;
+  }
+
+  if (selectedRole === "admin") {
+    return <AdminDashboard onBack={handleBack} />;
+  }
+
+  if (selectedRole === "bank") {
+    return <BankDashboard onBack={handleBack} />;
+  }
+
+  if (selectedRole === "customer") {
+    return <CustomerView onBack={handleBack} />;
+  }
+
+  return <RoleSelector onSelectRole={handleRoleSelect} />;
 };
 
 export default Index;
