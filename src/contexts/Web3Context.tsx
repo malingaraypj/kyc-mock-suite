@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
 import { BrowserProvider, Contract, Signer } from "ethers";
 import { toast } from "sonner";
 import KYCArtifact from "../contracts/KYC.json";
@@ -64,7 +70,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       setIsConnected(true);
 
       return address;
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error initializing provider:", error);
       toast.error("Failed to connect to wallet");
       throw error;
@@ -80,8 +86,10 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     try {
       await window.ethereum.request({ method: "eth_requestAccounts" });
       const address = await initializeProvider();
-      toast.success(`Connected: ${address?.slice(0, 6)}...${address?.slice(-4)}`);
-    } catch (error: any) {
+      toast.success(
+        `Connected: ${address?.slice(0, 6)}...${address?.slice(-4)}`
+      );
+    } catch (error) {
       console.error("Error connecting wallet:", error);
       toast.error("Failed to connect wallet");
     }
@@ -100,7 +108,9 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   const switchAccount = async (address: string) => {
     try {
       await initializeProvider(address);
-      toast.success(`Switched to: ${address.slice(0, 6)}...${address.slice(-4)}`);
+      toast.success(
+        `Switched to: ${address.slice(0, 6)}...${address.slice(-4)}`
+      );
     } catch (error) {
       console.error("Error switching account:", error);
       toast.error("Failed to switch account");
