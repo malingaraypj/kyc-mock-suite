@@ -1,66 +1,99 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { ShieldCheck, Plus, ShieldOff } from "lucide-react";
-import { mockData, Authorization } from "@/data/mockData";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useWeb3 } from "@/contexts/Web3Context";
+import { getAllBanks, getAllCustomers, handleContractError, waitForTransaction, Bank, Customer } from "@/lib/contractHelpers";
+
+interface Authorization {
+  bankAddr: string;
+  bankName: string;
+  kycId: string;
+  customerName: string;
+  isAuthorized: boolean;
+}
 
 const AuthorizationsTab = () => {
-  const [authorizations, setAuthorizations] = useState<Authorization[]>(mockData.authorizations);
+  const { contract } = useWeb3();
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [authorizations, setAuthorizations] = useState<Authorization[]>([]);
   const [selectedBank, setSelectedBank] = useState<string>("");
   const [selectedKycId, setSelectedKycId] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleGrantAccess = () => {
-    if (!selectedBank || !selectedKycId) {
+  useEffect(() => {
+    loadData();
+  }, [contract]);
+
+  const loadData = async () => {
+    if (!contract) return;
+    
+    const banksData = await getAllBanks(contract);
+    const customersData = await getAllCustomers(contract);
+    setBanks(banksData);
+    setCustomers(customersData);
+    
+    // Load authorizations
+    const authList: Authorization[] = [];
+    for (const bank of banksData) {
+      for (const customer of customersData) {
+        const isAuth = await contract.isBankAuthorized(customer.kycId, bank.addr);
+        if (isAuth) {
+          authList.push({
+            bankAddr: bank.addr,
+            bankName: bank.bName,
+            kycId: customer.kycId,
+            customerName: customer.name,
+            isAuthorized: true
+          });
+        }
+      }
+    }
+    setAuthorizations(authList);
+  };
+
+  const handleGrantAccess = async () => {
+    if (!contract || !selectedBank || !selectedKycId) {
       toast.error("Please select both bank and customer");
       return;
     }
 
-    const exists = authorizations.find(
-      auth => auth.bankAddr === selectedBank && auth.kycId === selectedKycId
-    );
-
-    if (exists) {
-      toast.error("Authorization already exists");
-      return;
+    setIsLoading(true);
+    try {
+      const tx = await contract.addAuth(selectedKycId, selectedBank);
+      await waitForTransaction(tx, "Access granted successfully");
+      setSelectedBank("");
+      setSelectedKycId("");
+      await loadData();
+    } catch (error) {
+      handleContractError(error, "Failed to grant access");
+    } finally {
+      setIsLoading(false);
     }
-
-    const newAuth: Authorization = {
-      bankAddr: selectedBank,
-      kycId: selectedKycId,
-      isAuthorized: true
-    };
-
-    setAuthorizations([...authorizations, newAuth]);
-    setSelectedBank("");
-    setSelectedKycId("");
-    toast.success("Access granted successfully");
   };
 
-  const handleRevokeAccess = (index: number) => {
-    const auth = authorizations[index];
-    setAuthorizations(
-      authorizations.map((a, i) => 
-        i === index ? { ...a, isAuthorized: false } : a
-      )
-    );
-    toast.success("Access revoked successfully");
-  };
+  const handleRevokeAccess = async (kycId: string, bankAddr: string) => {
+    if (!contract) return;
 
-  const getBankName = (addr: string) => {
-    return mockData.banks.find(b => b.addr === addr)?.bName || addr;
-  };
-
-  const getCustomerName = (kycId: string) => {
-    return mockData.customers.find(c => c.kycId === kycId)?.name || kycId;
+    setIsLoading(true);
+    try {
+      const tx = await contract.revokeAuth(kycId, bankAddr);
+      await waitForTransaction(tx, "Access revoked successfully");
+      await loadData();
+    } catch (error) {
+      handleContractError(error, "Failed to revoke access");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <div className="grid gap-6">
-      {/* Grant Access Card */}
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -78,7 +111,7 @@ const AuthorizationsTab = () => {
                   <SelectValue placeholder="Choose a bank" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockData.banks
+                  {banks
                     .filter(bank => bank.isApproved)
                     .map((bank) => (
                       <SelectItem key={bank.addr} value={bank.addr}>
@@ -95,7 +128,7 @@ const AuthorizationsTab = () => {
                   <SelectValue placeholder="Choose a customer" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockData.customers.map((customer) => (
+                  {customers.map((customer) => (
                     <SelectItem key={customer.kycId} value={customer.kycId}>
                       {customer.name} ({customer.kycId})
                     </SelectItem>
@@ -104,16 +137,19 @@ const AuthorizationsTab = () => {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={handleGrantAccess} className="w-full bg-gradient-primary hover:opacity-90">
+              <Button 
+                onClick={handleGrantAccess} 
+                className="w-full bg-gradient-primary hover:opacity-90"
+                disabled={isLoading}
+              >
                 <Plus className="h-4 w-4 mr-2" />
-                Grant Access
+                {isLoading ? "Granting..." : "Grant Access"}
               </Button>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Authorizations List Card */}
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -142,7 +178,7 @@ const AuthorizationsTab = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-foreground">
-                        {getBankName(auth.bankAddr)}
+                        {auth.bankName}
                       </h3>
                       {auth.isAuthorized ? (
                         <Badge variant="success">Active</Badge>
@@ -151,15 +187,16 @@ const AuthorizationsTab = () => {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Customer: {getCustomerName(auth.kycId)}
+                      Customer: {auth.customerName}
                     </p>
                   </div>
                   {auth.isAuthorized && (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleRevokeAccess(index)}
+                      onClick={() => handleRevokeAccess(auth.kycId, auth.bankAddr)}
                       className="text-destructive hover:text-destructive"
+                      disabled={isLoading}
                     >
                       <ShieldOff className="h-4 w-4 mr-2" />
                       Revoke
