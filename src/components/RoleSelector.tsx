@@ -68,12 +68,10 @@ const RoleSelector = ({ onSelectRole }: RoleSelectorProps) => {
               <span className="text-sm font-medium text-primary">Blockchain-Powered KYC</span>
             </div>
             
-            <h1 className="text-6xl md:text-7xl font-bold mb-6 leading-tight">
+            <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
               <span className="bg-gradient-primary bg-clip-text text-transparent">
-                Decentralized KYC
+                KYC Chain
               </span>
-              <br />
-              <span className="text-foreground">Management System</span>
             </h1>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
