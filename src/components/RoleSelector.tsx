@@ -59,15 +59,18 @@ const RoleSelector = ({
         <div className="w-full max-w-6xl">
           {/* Hero section */}
           <div className="text-center mb-16 animate-fade-in">
+            <div className="inline-flex items-center gap-3 mb-6 px-6 py-3 rounded-full bg-gradient-to-r from-primary/10 via-accent/10 to-primary/10 border border-primary/20">
+              <Sparkles className="w-5 h-5 text-primary animate-pulse-glow" />
+              <span className="text-sm font-medium bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                Decentralized Identity Verification
+              </span>
+            </div>
             
-            
-            
-            
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed">
               Secure, transparent, and efficient identity verification powered by Ethereum blockchain
             </p>
 
-            {account && <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border">
+            {account && <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-card border border-border shadow-sm">
                 <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
                 <span className="text-sm font-mono text-muted-foreground">
                   {account.slice(0, 8)}...{account.slice(-6)}
