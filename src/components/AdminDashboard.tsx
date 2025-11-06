@@ -1,18 +1,19 @@
 import { useState } from "react";
 import DashboardLayout from "./DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, FileCheck, ShieldCheck } from "lucide-react";
+import { Building2, Users, FileCheck, ShieldCheck, UserCheck } from "lucide-react";
 import BanksTab from "./admin/BanksTab";
 import CustomersTab from "./admin/CustomersTab";
 import RequestsTab from "./admin/RequestsTab";
 import AuthorizationsTab from "./admin/AuthorizationsTab";
+import PendingKYCTab from "./admin/PendingKYCTab";
 
 interface AdminDashboardProps {
   onBack: () => void;
 }
 
 const AdminDashboard = ({ onBack }: AdminDashboardProps) => {
-  const [activeTab, setActiveTab] = useState("banks");
+  const [activeTab, setActiveTab] = useState("pending");
 
   return (
     <DashboardLayout
@@ -21,7 +22,11 @@ const AdminDashboard = ({ onBack }: AdminDashboardProps) => {
       onBack={onBack}
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+        <TabsList className="grid w-full grid-cols-5 h-auto p-1">
+          <TabsTrigger value="pending" className="flex items-center gap-2 py-3">
+            <UserCheck className="h-4 w-4" />
+            <span className="hidden sm:inline">Pending KYC</span>
+          </TabsTrigger>
           <TabsTrigger value="banks" className="flex items-center gap-2 py-3">
             <Building2 className="h-4 w-4" />
             <span className="hidden sm:inline">Banks</span>
@@ -39,6 +44,10 @@ const AdminDashboard = ({ onBack }: AdminDashboardProps) => {
             <span className="hidden sm:inline">Access</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="pending" className="space-y-4">
+          <PendingKYCTab />
+        </TabsContent>
 
         <TabsContent value="banks" className="space-y-4">
           <BanksTab />

@@ -23,8 +23,6 @@ const registrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
   pan: z.string().length(10, "PAN must be exactly 10 characters").toUpperCase(),
   kycId: z.string().min(3, "KYC ID must be at least 3 characters"),
-  aadharHash: z.string().min(1, "Aadhar IPFS hash is required"),
-  panHash: z.string().min(1, "PAN IPFS hash is required"),
 });
 
 const CustomerView = ({ onBack }: CustomerViewProps) => {
@@ -36,6 +34,9 @@ const CustomerView = ({ onBack }: CustomerViewProps) => {
   const [banks, setBanks] = useState<Bank[]>([]);
   const [requestingBank, setRequestingBank] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [aadharFile, setAadharFile] = useState<File | null>(null);
+  const [panFile, setPanFile] = useState<File | null>(null);
+  const [isGeneratingHash, setIsGeneratingHash] = useState(false);
 
   const form = useForm<z.infer<typeof registrationSchema>>({
     resolver: zodResolver(registrationSchema),
@@ -43,8 +44,6 @@ const CustomerView = ({ onBack }: CustomerViewProps) => {
       name: "",
       pan: "",
       kycId: "",
-      aadharHash: "",
-      panHash: "",
     },
   });
 
@@ -88,25 +87,47 @@ const CustomerView = ({ onBack }: CustomerViewProps) => {
     }
   };
 
+  const generateFileHash = async (file: File): Promise<string> => {
+    const buffer = await file.arrayBuffer();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return `Qm${hashHex.substring(0, 44)}`; // IPFS-like hash format
+  };
+
   const handleRegisterCustomer = async (values: z.infer<typeof registrationSchema>) => {
+    if (!aadharFile || !panFile) {
+      toast.error("Please upload both Aadhar and PAN documents");
+      return;
+    }
+
     if (!contract || !account) {
       toast.error("Please connect your wallet");
       return;
     }
 
     setIsRegistering(true);
+    setIsGeneratingHash(true);
+    
     try {
-      toast.loading("Registering customer...");
+      toast.loading("Generating document hashes...");
+      
+      // Generate hashes from uploaded files
+      const aadharHash = await generateFileHash(aadharFile);
+      const panHash = await generateFileHash(panFile);
+      
+      toast.dismiss();
+      toast.loading("Registering customer on blockchain...");
       
       // Create a dummy VC hash for now
       const vcHash = "0x" + "0".repeat(64);
-      
+
       const tx = await contract.addCustomer(
         values.name,
         values.pan,
         values.kycId,
-        values.aadharHash,
-        values.panHash,
+        aadharHash,
+        panHash,
         vcHash
       );
       
@@ -117,6 +138,8 @@ const CustomerView = ({ onBack }: CustomerViewProps) => {
       // Load the newly created customer data
       setKycId(values.kycId);
       form.reset();
+      setAadharFile(null);
+      setPanFile(null);
     } catch (error: any) {
       toast.dismiss();
       if (error.message?.includes("OnlyAdmin")) {
@@ -131,6 +154,7 @@ const CustomerView = ({ onBack }: CustomerViewProps) => {
       console.error(error);
     } finally {
       setIsRegistering(false);
+      setIsGeneratingHash(false);
     }
   };
 
@@ -258,40 +282,42 @@ const CustomerView = ({ onBack }: CustomerViewProps) => {
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="aadharHash"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Aadhar Document Hash</FormLabel>
-                          <FormControl>
-                            <Input placeholder="IPFS hash of your Aadhar card" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <div className="space-y-2">
+                      <Label>Aadhar Document *</Label>
+                      <Input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => setAadharFile(e.target.files?.[0] || null)}
+                        className="cursor-pointer"
+                      />
+                      {aadharFile && (
+                        <p className="text-xs text-muted-foreground">
+                          ✓ Selected: {aadharFile.name}
+                        </p>
                       )}
-                    />
+                    </div>
 
-                    <FormField
-                      control={form.control}
-                      name="panHash"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>PAN Document Hash</FormLabel>
-                          <FormControl>
-                            <Input placeholder="IPFS hash of your PAN card" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                    <div className="space-y-2">
+                      <Label>PAN Document *</Label>
+                      <Input
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => setPanFile(e.target.files?.[0] || null)}
+                        className="cursor-pointer"
+                      />
+                      {panFile && (
+                        <p className="text-xs text-muted-foreground">
+                          ✓ Selected: {panFile.name}
+                        </p>
                       )}
-                    />
+                    </div>
 
                     <Button 
                       type="submit" 
                       className="w-full bg-gradient-primary"
-                      disabled={isRegistering}
+                      disabled={isRegistering || !aadharFile || !panFile}
                     >
-                      {isRegistering ? "Registering..." : "Register"}
+                      {isGeneratingHash ? "Generating Hashes..." : isRegistering ? "Registering..." : "Register"}
                     </Button>
                   </form>
                 </Form>
