@@ -53,6 +53,45 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
     try {
       const web3Provider = new BrowserProvider(window.ethereum);
       const network = await web3Provider.getNetwork();
+      
+      // Check if connected to Sepolia
+      const SEPOLIA_CHAIN_ID = 11155111;
+      if (Number(network.chainId) !== SEPOLIA_CHAIN_ID) {
+        toast.error("Please switch to Sepolia testnet");
+        try {
+          await window.ethereum.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0xaa36a7' }], // Sepolia chain ID in hex
+          });
+        } catch (switchError: any) {
+          // This error code indicates that the chain has not been added to MetaMask
+          if (switchError.code === 4902) {
+            try {
+              await window.ethereum.request({
+                method: 'wallet_addEthereumChain',
+                params: [{
+                  chainId: '0xaa36a7',
+                  chainName: 'Sepolia',
+                  nativeCurrency: {
+                    name: 'SepoliaETH',
+                    symbol: 'ETH',
+                    decimals: 18
+                  },
+                  rpcUrls: ['https://sepolia.infura.io/v3/'],
+                  blockExplorerUrls: ['https://sepolia.etherscan.io']
+                }]
+              });
+            } catch (addError) {
+              toast.error("Failed to add Sepolia network");
+              throw addError;
+            }
+          } else {
+            throw switchError;
+          }
+        }
+        return;
+      }
+
       const web3Signer = await web3Provider.getSigner(selectedAccount);
       const address = await web3Signer.getAddress();
 
@@ -69,6 +108,7 @@ export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
       setChainId(Number(network.chainId));
       setIsConnected(true);
 
+      toast.success("Connected to Sepolia testnet");
       return address;
     } catch (error) {
       console.error("Error initializing provider:", error);

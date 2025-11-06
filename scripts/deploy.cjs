@@ -3,7 +3,11 @@ const fs = require("fs");
 const path = require("path");
 
 async function main() {
-  console.log("Deploying KYC contract...");
+  const [deployer] = await hre.ethers.getSigners();
+  
+  console.log("Deploying KYC contract to Sepolia...");
+  console.log("Deploying with account:", deployer.address);
+  console.log("Account balance:", (await hre.ethers.provider.getBalance(deployer.address)).toString());
 
   const KYC = await hre.ethers.getContractFactory("KYC");
   const kyc = await KYC.deploy();
@@ -12,6 +16,7 @@ async function main() {
 
   const address = await kyc.getAddress();
   console.log("KYC contract deployed to:", address);
+  console.log("View on Etherscan: https://sepolia.etherscan.io/address/" + address);
 
   // Save contract address and ABI to frontend
   const contractsDir = path.join(__dirname, "..", "src", "contracts");
